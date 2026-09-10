@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#c2185b">
+<title>Makro Offerte</title>
+<link rel="manifest" href="manifest.json">
+<style>
+:root{--brand:#c2185b;--dark:#111827;--border:#dbe1e8;--muted:#64748b;--bg:#f4f6f8}
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:#111}
+.hidden{display:none!important}.top{position:sticky;top:0;z-index:10;background:#fff;border-bottom:1px solid var(--border);padding:12px 18px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.top h1{margin:0;font-size:1.25rem}.top small{color:var(--muted)}.wrap{max-width:1100px;margin:18px auto;padding:0 14px}
+.card{background:#fff;border:1px solid var(--border);border-radius:18px;padding:18px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.04)}
+.logo{display:block;max-width:330px;width:70%;margin:0 auto 16px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+label{display:block;font-weight:700;font-size:.9rem;margin-bottom:5px}input,select{width:100%;padding:11px;border:1px solid #cbd5e1;border-radius:10px;font-size:16px;background:#fff}
+.btn{border:0;border-radius:10px;padding:10px 14px;font-weight:800;cursor:pointer}.primary{background:var(--brand);color:#fff}.secondary{background:#111827;color:#fff}.light{background:#eef2f7;color:#111}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.message{min-height:22px;margin-top:10px;font-weight:700}.muted{color:var(--muted)}
+.quote-item{display:grid;grid-template-columns:120px minmax(180px,1fr) 100px 90px 120px auto;gap:8px;align-items:end;padding:10px;border:1px solid var(--border);border-radius:12px;background:#fafafa;margin-top:10px}
+.total-box{font-size:1.3rem;font-weight:900;margin-top:14px}.history-card{border:1px solid var(--border);border-radius:12px;padding:12px;margin-top:10px;background:#fff}
+.history-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.auth{max-width:420px;margin:80px auto;padding:20px}.auth h1{text-align:center}.auth .logo{max-width:260px}
+@media(max-width:760px){.grid,.row2{grid-template-columns:1fr}.quote-item{grid-template-columns:1fr 90px}.quote-item>div:nth-child(1),.quote-item>div:nth-child(2){grid-column:1/-1}}
+@media print{.no-print,.top{display:none!important}.wrap{max-width:none;margin:0}.card{border:0;box-shadow:none}}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body>
+<div id="loginView" class="auth card">
+  <img src="makro-logo.jpg" class="logo" alt="Makro">
+  <h1>Makro Offerte</h1>
+  <p class="muted">Log in met het beheerder-account.</p>
+  <button id="loginBtn" class="btn primary" style="width:100%">Inloggen met Google</button>
+  <div id="loginMsg" class="message"></div>
+</div>
+
+<div id="appView" class="hidden">
+  <header class="top no-print">
+    <div><h1>Makro Offerte</h1><small id="email"></small></div>
+    <button id="logoutBtn" class="btn light">Uitloggen</button>
+  </header>
+
+  <main class="wrap">
+    <section class="card">
+      <img src="makro-logo.jpg" class="logo" alt="Makro">
+      <h2>OFFERTE</h2>
+
+      <div class="grid">
+        <div><label>Klantnaam</label><input id="quoteCustomer" placeholder="Naam klant" list="customerSuggestions" autocomplete="off"></div>
+        <div><label>E-mail klant</label><input id="quoteEmail" type="email" placeholder="klant@email.com"></div>
+      </div>
+
+      <div class="grid" style="margin-top:12px">
+        <div><label>Offertenummer</label><input id="quoteNumber" readonly></div>
+        <div><label>Datum</label><input id="quoteDate" type="date"></div>
+      </div>
+
+      <div style="margin-top:12px"><label>Opmerking</label><input id="quoteNote" placeholder="Optioneel"></div>
+
+      <div id="quoteItems"></div>
+      <button id="addQuoteItemBtn" type="button" class="btn light" style="margin-top:12px">+ PRODUCT</button>
+      <div class="total-box">Totaal offerte: CG <span id="quoteTotal">0.00</span></div>
+
+      <div class="actions no-print">
+        <button id="saveQuoteBtn" type="button" class="btn primary">OFFERTE OPSLAAN</button>
+        <button id="quotePdfBtn" type="button" class="btn secondary">PDF MAKEN</button>
+        <button id="quoteWhatsappBtn" type="button" class="btn secondary">WHATSAPP (PDF)</button>
+        <button id="quoteEmailBtn" type="button" class="btn secondary">E-MAIL (PDF)</button>
+        <button id="quotePrintBtn" type="button" class="btn light">PRINTEN</button>
+        <button id="newQuoteBtn" type="button" class="btn light">NIEUWE OFFERTE</button>
+      </div>
+      <div id="quoteMessage" class="message"></div>
+    </section>
+
+    <section class="card no-print">
+      <h2>Opgeslagen offertes</h2>
+      <div id="quoteHistory"></div>
+    </section>
+  </main>
+</div>
+
+<datalist id="customerSuggestions"></datalist>
+<datalist id="quoteProductSuggestions"></datalist>
+
+<script type="module">
+import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js';
+import {getAuth,GoogleAuthProvider,signInWithPopup,signInWithRedirect,onAuthStateChanged,signOut} from 'https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js';
+import {getFirestore,collection,getDocs,doc,getDoc,setDoc} from 'https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js';
+
+const firebaseConfig={apiKey:"AIzaSyAz84bwA97vvqv7LrjvYXBI7BheRwGM_ms",authDomain:"makro-tht.firebaseapp.com",projectId:"makro-tht",storageBucket:"makro-tht.firebasestorage.app",messagingSenderId:"777366139530",appId:"1:777366139530:web:2cc8ca4c2dfffb9e07f373",measurementId:"G-K9SV5ZLM83"};
+const OWNER='mh.makrostore@gmail.com';
+const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app),provider=new GoogleAuthProvider(),$=id=>document.getElementById(id);
+let products=[],quoteHistoryState={entries:[]};
+
+function msg(el,t,err=false){if(!el)return;el.textContent=t||'';el.style.color=err?'#b91c1c':'#166534'}
+function safe(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))}
+function newQuoteNumber(){const d=new Date(),p=n=>String(n).padStart(2,'0');return `OFF-${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}-${String(Date.now()).slice(-5)}`}
+
+async function loadProducts(){
+  const snap=await getDocs(collection(db,'catalogProducts'));
+  products=snap.docs.map(d=>({id:d.id,...d.data()}));
+  refreshProductSuggestions();
+}
+function refreshProductSuggestions(){
+  $('quoteProductSuggestions').innerHTML=products.filter(p=>!p.internalOnly).map(p=>`<option value="${safe(p.name||'')}">${safe(p.code||p.barcode||'')}</option>`).join('');
+}
+function refreshCustomerSuggestions(){
+  const names=[...new Set((quoteHistoryState.entries||[]).map(q=>String(q.customer||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  $('customerSuggestions').innerHTML=names.map(n=>`<option value="${safe(n)}"></option>`).join('');
+}
+function resetQuote(){
+  $('quoteCustomer').value='';$('quoteEmail').value='';$('quoteNote').value='';
+  $('quoteNumber').value=newQuoteNumber();$('quoteDate').value=new Date().toISOString().slice(0,10);
+  $('quoteItems').innerHTML='';addQuoteItem();updateQuoteTotal();msg($('quoteMessage'),'');
+}
+function quoteCodeForProduct(p,unit){
+  if(!p)return '';
+  const u=String(unit||'').toUpperCase();
+  if(u==='CRT')return String(p.codeCrt||p.codeEach||p.productCode||p.code||p.barcode||'');
+  if(u==='P12')return String(p.codeP12||p.codeEach||p.productCode||p.code||p.barcode||'');
+  if(/^P\d+$/.test(u)||u==='PACK'||u==='PAK')return String(p.codePack||p.codeEach||p.productCode||p.code||p.barcode||'');
+  return String(p.codeEach||p.productCode||p.code||p.barcode||'');
+}
+function priceForProduct(p,unit){
+  const u=String(unit||'').toUpperCase();
+  if(u==='CRT')return Number(p.priceCrt||p.price||0);
+  if(u==='P12')return Number(p.priceP12||p.price||0);
+  if(/^P\d+$/.test(u)||u==='PACK'||u==='PAK')return Number(p.pricePack||p.price||0);
+  return Number(p.priceEach||p.price||0);
+}
+function addQuoteItem(item={}){
+  const box=$('quoteItems'),row=document.createElement('div');row.className='quote-item';
+  row.innerHTML=`<div><label>Code</label><input class="quote-code" placeholder="Productcode" value="${safe(item.code||'')}"></div>
+  <div><label>Naam product</label><input class="quote-product" list="quoteProductSuggestions" placeholder="Naam product" value="${safe(item.product||'')}"></div>
+  <div><label>Eenheid</label><select class="quote-unit"><option>LOS</option><option>EACH</option><option>P12</option><option>CRT</option></select></div>
+  <div><label>Aantal</label><input class="quote-qty" type="number" min="1" step="1" value="${Number(item.qty||1)}"></div>
+  <div><label>Prijs (CG)</label><input class="quote-price" type="number" min="0" step="0.01" value="${item.price!==undefined?Number(item.price).toFixed(2):''}" placeholder="0.00"></div>
+  <button type="button" class="btn light quote-remove">×</button>`;
+  const codeEl=row.querySelector('.quote-code'),productEl=row.querySelector('.quote-product'),unitEl=row.querySelector('.quote-unit'),priceEl=row.querySelector('.quote-price');
+  unitEl.value=item.unit||'LOS';
+  const fill=p=>{
+    if(!p)return;
+    productEl.value=p.name||'';
+    codeEl.value=quoteCodeForProduct(p,unitEl.value);
+    const pr=priceForProduct(p,unitEl.value);if(pr>0)priceEl.value=pr.toFixed(2);
+    updateQuoteTotal();
+  };
+  codeEl.addEventListener('change',()=>{
+    const v=codeEl.value.trim().toLowerCase();const p=products.find(x=>[x.code,x.barcode,x.codeEach,x.codeP12,x.codeCrt,x.codePack].some(c=>String(c||'').trim().toLowerCase()===v));fill(p);
+  });
+  productEl.addEventListener('change',()=>{
+    const v=productEl.value.trim().toLowerCase();fill(products.find(x=>String(x.name||'').trim().toLowerCase()===v));
+  });
+  unitEl.addEventListener('change',()=>{
+    const v=productEl.value.trim().toLowerCase();fill(products.find(x=>String(x.name||'').trim().toLowerCase()===v));
+  });
+  row.querySelectorAll('input,select').forEach(el=>el.addEventListener('input',updateQuoteTotal));
+  row.querySelector('.quote-remove').onclick=()=>{row.remove();if(!box.children.length)addQuoteItem();updateQuoteTotal()};
+  box.appendChild(row);updateQuoteTotal();
+}
+function quoteItemsData(){
+  return [...document.querySelectorAll('.quote-item')].map(r=>{
+    const product=r.querySelector('.quote-product')?.value.trim()||'',unit=r.querySelector('.quote-unit')?.value||'LOS';
+    if(!product)return null;
+    const p=products.find(x=>String(x.name||'').trim().toLowerCase()===product.toLowerCase());
+    return {code:r.querySelector('.quote-code')?.value.trim()||quoteCodeForProduct(p,unit),product,unit,qty:Math.max(1,Number(r.querySelector('.quote-qty')?.value||1)),price:Math.max(0,Number(r.querySelector('.quote-price')?.value||0))};
+  }).filter(Boolean);
+}
+function updateQuoteTotal(){$('quoteTotal').textContent=quoteItemsData().reduce((a,x)=>a+x.qty*x.price,0).toFixed(2)}
+function quoteData(){
+  const items=quoteItemsData(),num=$('quoteNumber').value||newQuoteNumber();
+  return {id:num,number:num,date:$('quoteDate').value||new Date().toISOString().slice(0,10),customer:$('quoteCustomer').value.trim(),email:$('quoteEmail').value.trim(),note:$('quoteNote').value.trim(),items,total:items.reduce((a,x)=>a+x.qty*x.price,0),createdAt:new Date().toISOString()};
+}
+function validateQuote(q){if(!q.customer){msg($('quoteMessage'),'Vul de klantnaam in.',true);return false}if(!q.items.length){msg($('quoteMessage'),'Voeg minimaal één product toe.',true);return false}return true}
+async function saveQuote(){
+  const q=quoteData();if(!validateQuote(q))return;
+  try{
+    const snap=await getDoc(doc(db,'publicSettings','offerteTracker')),state=snap.exists()?snap.data():{entries:[]};
+    const entries=Array.isArray(state.entries)?state.entries:[],idx=entries.findIndex(x=>x.id===q.id);
+    if(idx>=0)entries[idx]=q;else entries.push(q);
+    await setDoc(doc(db,'publicSettings','offerteTracker'),{entries},{merge:false});
+    quoteHistoryState={entries};renderQuoteHistory();refreshCustomerSuggestions();msg($('quoteMessage'),'Offerte opgeslagen. Dit is geen bestelling en gaat niet naar ORDER PICK.');
+  }catch(e){msg($('quoteMessage'),'Offerte opslaan mislukt: '+e.message,true)}
+}
+function buildQuotePdf(q){
+  if(!window.jspdf?.jsPDF){msg($('quoteMessage'),'PDF-module kon niet worden geladen.',true);return null}
+  const {jsPDF}=window.jspdf,pdf=new jsPDF();
+  try{pdf.addImage('makro-logo.jpg','JPEG',14,10,182,76)}catch(e){}
+  pdf.setFont('helvetica','bold');pdf.setFontSize(18);pdf.text('OFFERTE',14,94);
+  pdf.setFontSize(10);pdf.setFont('helvetica','normal');pdf.text(`Offertenummer: ${q.number}`,14,104);pdf.text(`Datum: ${q.date}`,14,110);
+  pdf.text(`Klant: ${q.customer}`,14,128);if(q.email)pdf.text(`E-mail: ${q.email}`,14,134);
+  const y=q.email?143:137;
+  pdf.autoTable({startY:y,head:[['Code','Product','Eenheid','Aantal','Prijs','Totaal']],body:q.items.map(x=>[x.code||'-',x.product,x.unit,String(x.qty),`CG ${x.price.toFixed(2)}`,`CG ${(x.qty*x.price).toFixed(2)}`]),styles:{fontSize:9,cellPadding:2.5},headStyles:{fillColor:[194,24,91]},columnStyles:{0:{cellWidth:24},1:{cellWidth:62},2:{cellWidth:22},3:{cellWidth:18},4:{cellWidth:25},5:{cellWidth:28}}});
+  let fy=pdf.lastAutoTable.finalY+28;pdf.setFont('helvetica','bold');pdf.setFontSize(12);pdf.text(`Totaal offerte: CG ${q.total.toFixed(2)}`,14,fy);fy+=12;
+  if(q.note){pdf.setFont('helvetica','normal');pdf.setFontSize(10);pdf.text(`Opmerking: ${q.note}`,14,fy);fy+=12}
+  pdf.setFont('helvetica','bold');pdf.setFontSize(10);pdf.text('Bovenstaand is een vrijblijvende offerte, geen bestelling!',14,fy);fy+=10;
+  pdf.setFont('helvetica','normal');pdf.text('Met vriendelijke groeten,',14,fy);pdf.setFont('helvetica','bold');pdf.text('Makro',14,fy+6);pdf.text('Promo Team',14,fy+12);
+  return pdf;
+}
+function makeQuotePdf(){const q=quoteData();if(!validateQuote(q))return;const pdf=buildQuotePdf(q);if(pdf)pdf.save(`${q.number}-${q.customer.replace(/[^a-z0-9]+/gi,'-')}.pdf`)}
+async function shareQuotePdf(mode){
+  const q=quoteData();if(!validateQuote(q))return;const pdf=buildQuotePdf(q);if(!pdf)return;
+  const blob=pdf.output('blob'),file=new File([blob],`${q.number}.pdf`,{type:'application/pdf'}),text=`Offerte ${q.number} voor ${q.customer}. Bovenstaand is een vrijblijvende offerte, geen bestelling!`;
+  try{if(navigator.canShare&&navigator.canShare({files:[file]})&&navigator.share){await navigator.share({title:`Makro offerte ${q.number}`,text,files:[file]});return}}catch(e){if(e.name==='AbortError')return}
+  pdf.save(`${q.number}.pdf`);
+  if(mode==='email'){location.href=`mailto:${encodeURIComponent(q.email||'')}?subject=${encodeURIComponent('Makro offerte '+q.number)}&body=${encodeURIComponent(text+'\n\nDe PDF is gedownload. Voeg deze PDF als bijlage toe aan deze e-mail.')}`}
+  else window.open(`https://wa.me/?text=${encodeURIComponent(text+'\n\nDe PDF is gedownload. Voeg het PDF-bestand toe in WhatsApp.')}`,'_blank');
+}
+function printQuote(){const q=quoteData();if(!validateQuote(q))return;const pdf=buildQuotePdf(q);if(pdf)window.open(pdf.output('bloburl'),'_blank')}
+function renderQuoteHistory(){
+  const entries=[...(quoteHistoryState.entries||[])].sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
+  $('quoteHistory').innerHTML=entries.length?entries.map(q=>`<div class="history-card"><div class="history-head"><div><strong>${safe(q.number||'Offerte')}</strong> — ${safe(q.customer||'-')}<div class="muted">${safe(q.date||'')} · CG ${Number(q.total||0).toFixed(2)}</div></div><button class="btn light load-quote" data-id="${safe(q.id)}">OPENEN</button></div></div>`).join(''):'<div class="muted">Nog geen offertes opgeslagen.</div>';
+  document.querySelectorAll('.load-quote').forEach(b=>b.onclick=()=>loadQuote(b.dataset.id));
+}
+function loadQuote(id){
+  const q=(quoteHistoryState.entries||[]).find(x=>x.id===id);if(!q)return;
+  $('quoteCustomer').value=q.customer||'';$('quoteEmail').value=q.email||'';$('quoteNumber').value=q.number||q.id;$('quoteDate').value=q.date||new Date().toISOString().slice(0,10);$('quoteNote').value=q.note||'';
+  $('quoteItems').innerHTML='';(q.items||[]).forEach(addQuoteItem);if(!(q.items||[]).length)addQuoteItem();updateQuoteTotal();window.scrollTo({top:0,behavior:'smooth'});
+}
+async function loadQuoteHistory(){
+  try{const snap=await getDoc(doc(db,'publicSettings','offerteTracker'));quoteHistoryState=snap.exists()?snap.data():{entries:[]};renderQuoteHistory();refreshCustomerSuggestions()}catch(e){msg($('quoteMessage'),'Offertes laden mislukt: '+e.message,true)}
+}
+
+$('loginBtn').onclick=async()=>{try{await signInWithPopup(auth,provider)}catch(e){if(e.code==='auth/popup-blocked')await signInWithRedirect(auth,provider);else msg($('loginMsg'),e.message,true)}};
+$('logoutBtn').onclick=()=>signOut(auth);
+$('addQuoteItemBtn').onclick=()=>addQuoteItem();
+$('saveQuoteBtn').onclick=saveQuote;$('quotePdfBtn').onclick=makeQuotePdf;$('quoteWhatsappBtn').onclick=()=>shareQuotePdf('whatsapp');$('quoteEmailBtn').onclick=()=>shareQuotePdf('email');$('quotePrintBtn').onclick=printQuote;$('newQuoteBtn').onclick=resetQuote;
+
+onAuthStateChanged(auth,async user=>{
+  if(!user){$('loginView').classList.remove('hidden');$('appView').classList.add('hidden');return}
+  if(String(user.email||'').toLowerCase()!==OWNER){msg($('loginMsg'),'Dit account heeft geen toegang.',true);await signOut(auth);return}
+  $('loginView').classList.add('hidden');$('appView').classList.remove('hidden');$('email').textContent=user.email||'';
+  resetQuote();
+  await Promise.all([loadProducts(),loadQuoteHistory()]);
+});
+
+if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+</script>
+</body>
+</html>
