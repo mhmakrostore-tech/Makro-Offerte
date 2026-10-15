@@ -89,7 +89,7 @@ label{display:block;font-weight:700;font-size:.9rem;margin-bottom:5px}input,sele
 </div>
 
 <datalist id="customerSuggestions"></datalist>
-<datalist id="quoteProductSuggestions"></datalist>
+<datalist id="quoteProductSuggestions"></datalist><datalist id="quoteCodeSuggestions"></datalist>
 
 <script type="module">
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js';
@@ -100,6 +100,7 @@ const firebaseConfig={apiKey:"AIzaSyAz84bwA97vvqv7LrjvYXBI7BheRwGM_ms",authDomai
 const OWNER='mh.makrostore@gmail.com';
 const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app),provider=new GoogleAuthProvider(),$=id=>document.getElementById(id);
 let products=[],quoteHistoryState={entries:[]};
+let rememberedQuoteProducts=[];
 
 function msg(el,t,err=false){if(!el)return;el.textContent=t||'';el.style.color=err?'#b91c1c':'#166534'}
 function safe(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))}
@@ -110,8 +111,31 @@ async function loadProducts(){
   products=snap.docs.map(d=>({id:d.id,...d.data()}));
   refreshProductSuggestions();
 }
+function rebuildRememberedQuoteProducts(){
+  const known=new Map();
+  const history=[...(quoteHistoryState.entries||[])].sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')));
+  for(const q of history)for(const item of (q.items||[])){
+    const name=String(item.product||'').trim();if(!name)continue;
+    known.set(name.toLocaleLowerCase(),{name,code:String(item.code||''),unit:item.unit||'LOS',price:Number(item.price||0)});
+  }
+  rememberedQuoteProducts=[...known.values()];
+}
+function allQuoteProducts(){
+  const list=products.filter(p=>!p.internalOnly).map(p=>({...p,_source:'catalog'}));
+  const names=new Set(list.map(p=>String(p.name||'').toLocaleLowerCase()));
+  for(const p of rememberedQuoteProducts)if(!names.has(p.name.toLocaleLowerCase()))list.push({...p,_source:'history'});
+  return list;
+}
 function refreshProductSuggestions(){
-  $('quoteProductSuggestions').innerHTML=products.filter(p=>!p.internalOnly).map(p=>`<option value="${safe(p.name||'')}">${safe(p.code||p.barcode||'')}</option>`).join('');
+  rebuildRememberedQuoteProducts();
+  const all=allQuoteProducts();
+  $('quoteProductSuggestions').innerHTML=all.map(p=>`<option value="${safe(p.name||'')}">${safe(p.code||p.barcode||'')}</option>`).join('');
+  const codeList=$('quoteCodeSuggestions');if(codeList)codeList.innerHTML=all.flatMap(p=>[p.code,p.barcode,p.codeEach,p.codeP12,p.codeCrt,p.codePack].filter(Boolean).map(c=>`<option value="${safe(c)}">${safe(p.name||'')}</option>`)).join('');
+}
+function lookupQuoteProduct(value){
+ const v=String(value||'').trim().toLocaleLowerCase();if(!v)return null;
+ const all=allQuoteProducts();
+ return all.find(p=>[p.name,p.code,p.barcode,p.codeEach,p.codeP12,p.codeCrt,p.codePack].some(x=>String(x||'').trim().toLocaleLowerCase()===v))||null;
 }
 function refreshCustomerSuggestions(){
   const names=[...new Set((quoteHistoryState.entries||[]).map(q=>String(q.customer||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
@@ -139,7 +163,7 @@ function priceForProduct(p,unit){
 }
 function addQuoteItem(item={}){
   const box=$('quoteItems'),row=document.createElement('div');row.className='quote-item';
-  row.innerHTML=`<div><label>Code</label><input class="quote-code" placeholder="Productcode" value="${safe(item.code||'')}"></div>
+  row.innerHTML=`<div><label>Code</label><input class="quote-code" list="quoteCodeSuggestions" placeholder="Productcode" value="${safe(item.code||'')}"></div>
   <div><label>Naam product</label><input class="quote-product" list="quoteProductSuggestions" placeholder="Naam product" value="${safe(item.product||'')}"></div>
   <div><label>Eenheid</label><select class="quote-unit"><option>LOS</option><option>EACH</option><option>P12</option><option>CRT</option></select></div>
   <div><label>Aantal</label><input class="quote-qty" type="number" min="1" step="1" value="${Number(item.qty||1)}"></div>
@@ -150,18 +174,19 @@ function addQuoteItem(item={}){
   const fill=p=>{
     if(!p)return;
     productEl.value=p.name||'';
-    codeEl.value=quoteCodeForProduct(p,unitEl.value);
-    const pr=priceForProduct(p,unitEl.value);if(pr>0)priceEl.value=pr.toFixed(2);
+    codeEl.value=p._source==='history'?(p.code||''):quoteCodeForProduct(p,unitEl.value);
+    if(p._source==='history' && !item.product)unitEl.value=p.unit||'LOS';
+    const pr=p._source==='history'?Number(p.price||0):priceForProduct(p,unitEl.value);if(pr>0)priceEl.value=pr.toFixed(2);
     updateQuoteTotal();
   };
   codeEl.addEventListener('change',()=>{
-    const v=codeEl.value.trim().toLowerCase();const p=products.find(x=>[x.code,x.barcode,x.codeEach,x.codeP12,x.codeCrt,x.codePack].some(c=>String(c||'').trim().toLowerCase()===v));fill(p);
+    fill(lookupQuoteProduct(codeEl.value));
   });
   productEl.addEventListener('change',()=>{
-    const v=productEl.value.trim().toLowerCase();fill(products.find(x=>String(x.name||'').trim().toLowerCase()===v));
+    fill(lookupQuoteProduct(productEl.value));
   });
   unitEl.addEventListener('change',()=>{
-    const v=productEl.value.trim().toLowerCase();fill(products.find(x=>String(x.name||'').trim().toLowerCase()===v));
+    fill(lookupQuoteProduct(productEl.value));
   });
   row.querySelectorAll('input,select').forEach(el=>el.addEventListener('input',updateQuoteTotal));
   row.querySelector('.quote-remove').onclick=()=>{row.remove();if(!box.children.length)addQuoteItem();updateQuoteTotal()};
@@ -188,7 +213,7 @@ async function saveQuote(){
     const entries=Array.isArray(state.entries)?state.entries:[],idx=entries.findIndex(x=>x.id===q.id);
     if(idx>=0)entries[idx]=q;else entries.push(q);
     await setDoc(doc(db,'publicSettings','offerteTracker'),{entries},{merge:true});
-    quoteHistoryState={entries};renderQuoteHistory();refreshCustomerSuggestions();msg($('quoteMessage'),'Offerte opgeslagen. Dit is geen bestelling en gaat niet naar ORDER PICK.');
+    quoteHistoryState={entries};renderQuoteHistory();refreshCustomerSuggestions();refreshProductSuggestions();msg($('quoteMessage'),'Offerte opgeslagen. Dit is geen bestelling en gaat niet naar ORDER PICK.');
   }catch(e){msg($('quoteMessage'),'Offerte opslaan mislukt: '+e.message,true)}
 }
 function buildQuotePdf(q){
