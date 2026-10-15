@@ -310,7 +310,20 @@ $('sintAddProduct').onclick=async()=>{const code=$('sintProductCode').value.trim
 $('sintMoveType').onchange=()=>{const use=$('sintMoveType').value==='use';$('sintProductWrap').classList.toggle('hidden',!use);$('sintPackageWrap').classList.toggle('hidden',use)};
 $('sintSaveMove').onclick=async()=>{const type=$('sintMoveType').value,qty=sintNum($('sintMoveQty').value),date=$('sintMoveDate').value,code=$('sintUsedProduct').value,pack=$('sintPackage').value;if(!date||!qty){msg($('sintMsg'),'Vul datum en aantal groter dan nul in.',true);return}if(type==='use'){const p=sint.products.find(p=>p.code===code);if(!p){msg($('sintMsg'),'Voeg eerst een product toe.',true);return}if(sintProductStock(p)<qty){msg($('sintMsg'),'Onvoldoende productvoorraad.',true);return}}else if(type==='shop'&&sintPackageStock(pack)<qty){msg($('sintMsg'),'Onvoldoende gemaakte pakketten op voorraad.',true);return}sint.moves.push({id:'m'+Date.now(),date,type,qty,...(type==='use'?{code}:{package:pack})});await sintCommit()};
 $('sintReportDate').onchange=sintRenderReport;$('sintDownloadCsv').onclick=sintCsv;
-$('sintPrintReport').onclick=()=>{const w=window.open('','_blank');if(!w){alert('Sta pop-ups toe om te printen.');return}w.document.write('<html><head><title>Sint dagrapport</title><style>body{font-family:Arial;padding:20px}td,th{border:1px solid #ccc;padding:8px;text-align:left}table{border-collapse:collapse;width:100%}</style></head><body>'+ $('sintReportContent').innerHTML+'<script>
+$('sintPrintReport').onclick=()=>{const w=window.open('','_blank');if(!w){alert('Sta pop-ups toe om te printen.');return}w.document.write('<html><head><title>Sint dagrapport</title><style>body{font-family:Arial;padding:20px}td,th{border:1px solid #ccc;padding:8px;text-align:left}table{border-collapse:collapse;width:100%}</style></head><body>'+ $('sintReportContent').innerHTML+'</body></html>');w.document.close();w.focus();w.print()};
+for(const id of ['sintOrderDate','sintMoveDate','sintReportDate'])$(id).value=todaySint();
+
+onAuthStateChanged(auth,async user=>{
+  if(!user){$('loginView').classList.remove('hidden');$('appView').classList.add('hidden');return}
+  if(String(user.email||'').toLowerCase()!==OWNER){msg($('loginMsg'),'Dit account heeft geen toegang.',true);await signOut(auth);return}
+  $('loginView').classList.add('hidden');$('appView').classList.remove('hidden');$('email').textContent=user.email||'';
+  resetQuote();
+  await Promise.all([loadProducts(),loadQuoteHistory()]);await sintLoad();
+});
+
+if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+</script>
+<script>
 (function(){
   const quote=document.getElementById('offertePage');
   const sint=document.getElementById('sintSection');
@@ -337,19 +350,6 @@ $('sintPrintReport').onclick=()=>{const w=window.open('','_blank');if(!w){alert(
   list.addEventListener('click',e=>{if(e.target.closest('.sint-edit'))page('bestellingen')});
   page('offerte');
 })();
-</script>
-</body></html>');w.document.close();w.focus();w.print()};
-for(const id of ['sintOrderDate','sintMoveDate','sintReportDate'])$(id).value=todaySint();
-
-onAuthStateChanged(auth,async user=>{
-  if(!user){$('loginView').classList.remove('hidden');$('appView').classList.add('hidden');return}
-  if(String(user.email||'').toLowerCase()!==OWNER){msg($('loginMsg'),'Dit account heeft geen toegang.',true);await signOut(auth);return}
-  $('loginView').classList.add('hidden');$('appView').classList.remove('hidden');$('email').textContent=user.email||'';
-  resetQuote();
-  await Promise.all([loadProducts(),loadQuoteHistory()]);await sintLoad();
-});
-
-if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 </script>
 </body>
 </html>
