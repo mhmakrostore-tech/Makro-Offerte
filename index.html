@@ -320,6 +320,11 @@ async function sintLoad(){try{const d=await getDoc(sintDoc());const v=d.data()?.
 async function sintCommit(){try{await setDoc(sintDoc(),{sint},{merge:true});msg($('sintMsg'),'Opgeslagen in Firebase.');sintRender();return true}catch(e){msg($('sintMsg'),'Opslaan mislukt: '+e.message,true);await sintLoad();return false}}
 function sintReset(){for(const id of ['sintEdit','sintPickup','sintName','sintCompany','sintPhone','sintChoco'])$(id).value='';$('sintOrderDate').value=todaySint();$('sintLarge').value=0;$('sintSmall').value=0}
 $('sintOrderSearch').addEventListener('input',()=>sintRender());
+function sintDisplayDate(value){
+ const v=String(value||'').trim();
+ const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
+ return m?`${m[3]}-${m[2]}-${m[1]}`:(v||'-');
+}
 function sintRender(){
  const allOrders=sint.orders.slice().sort((a,b)=>(a.pickup||'9999-12-31').localeCompare(b.pickup||'9999-12-31')||(a.date||'').localeCompare(b.date||''));
  const q=String($('sintOrderSearch').value||'').trim().toLowerCase();
@@ -335,8 +340,8 @@ function sintRender(){
  <div class="sint-order-details">
  <div><span class="sint-field-label">Bedrijf</span><strong>${safe(o.company||'Nog invullen')}</strong></div>
  <div><span class="sint-field-label">Telefoon</span><strong>${safe(o.phone||'Nog invullen')}</strong></div>
- <div><span class="sint-field-label">Ophaaldatum</span><strong>${safe(o.pickup||'-')}</strong></div>
- <div><span class="sint-field-label">Besteldatum</span><strong>${safe(o.date||'-')}</strong></div>
+ <div><span class="sint-field-label">Ophaaldatum</span><strong>${safe(sintDisplayDate(o.pickup))}</strong></div>
+ <div><span class="sint-field-label">Besteldatum</span><strong>${safe(sintDisplayDate(o.date))}</strong></div>
  </div>
  <div class="sint-order-sizes"><div>LARGE <strong>${sintNum(o.large)}</strong></div><div>SMALL <strong>${sintNum(o.small)}</strong></div></div>
  <div class="sint-order-extra"><span class="sint-field-label">Chocoladeletters</span><strong>${safe(o.choco||'-')}</strong></div>
