@@ -55,6 +55,14 @@ label{display:block;font-weight:700;font-size:.9rem;margin-bottom:5px}input,sele
 #sintOrderList .sint-order-statuses label{font-size:1rem;padding:12px;min-height:52px}
 #sintOrderList .actions{border-top:1px solid #e5e7eb;padding-top:12px}
 @media(max-width:560px){#sintOrderList .sint-order-details{grid-template-columns:1fr}#sintOrderList .sint-order-statuses{grid-template-columns:1fr}#sintOrderList .sint-order-name{font-size:1.5rem}}
+/* Sint bestellingen: alleen visuele aanpassing naam en maatvakjes */
+#sintOrderList .sint-order-name,
+#sintOrderList .sint-order-card.sint-picked .sint-order-name,
+#sintOrderList .sint-order-card.sint-cancelled .sint-order-name{color:#e5a000;font-size:1.35rem}
+#sintOrderList .sint-order-sizes{grid-template-columns:repeat(2,minmax(0,150px));gap:10px;margin:10px 0}
+#sintOrderList .sint-order-sizes>div{padding:8px;border-radius:10px;gap:2px}
+#sintOrderList .sint-order-sizes strong{font-size:1.55rem}
+@media(max-width:560px){#sintOrderList .sint-order-name{font-size:1.3rem}}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
