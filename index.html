@@ -127,7 +127,7 @@ label{display:block;font-weight:700;font-size:.9rem;margin-bottom:5px}input,sele
 
 </div>
 <section class="card no-print hidden" id="sintSection"><h2 id="sintPageTitle">SINT BESTELLINGEN</h2><div class="actions" id="sintProductionTabs"><button class="btn light" type="button" data-sint-tab="products">Productvoorraad</button><button class="btn light" type="button" data-sint-tab="production">Productie / Winkel</button><button class="btn light" type="button" data-sint-tab="report">Dagrapport</button></div><p id="sintMsg" class="message"></p>
-<div id="sintOrders"><h3>Overzicht bestellingen en nog te maken</h3><div id="sintOrderSummary"></div><h3>Klantbestelling</h3><input type="hidden" id="sintEdit"><div class="grid"><div><label>Datum bestelling</label><input type="date" id="sintOrderDate"></div><div><label>Datum ophalen</label><input type="date" id="sintPickup"></div><div><label>Naam</label><input id="sintName"></div><div><label>Bedrijf</label><input id="sintCompany"></div><div><label>Telefoon</label><input id="sintPhone"></div><div><label>Chocoletter (optie / opmerking)</label><input id="sintChoco" placeholder="Bijv. ja, melk, puur"></div><div class="sint-size-field"><label for="sintLarge">SINT LARGE – AANTAL</label><input type="number" min="0" id="sintLarge" value="0"></div><div class="sint-size-field"><label for="sintSmall">SINT SMALL – AANTAL</label><input type="number" min="0" id="sintSmall" value="0"></div></div><div class="actions"><button class="btn primary" id="sintSaveOrder" type="button">Bestelling opslaan</button><button class="btn light" id="sintResetOrder" type="button">Nieuwe bestelling</button></div><h3>Opgeslagen bestellingen</h3><div class="sint-order-filter"><button type="button" id="sintShowOpen" class="btn secondary">Openstaande bestellingen</button><button type="button" id="sintShowAll" class="btn light">Alle bestellingen / Historie</button></div><div style="margin:12px 0"><label for="sintOrderSearch">Zoek op naam, telefoonnummer of bedrijf</label><input id="sintOrderSearch" type="search" placeholder="Zoek bestelling" autocomplete="off"></div><div id="sintOrderList"></div></div>
+<div id="sintOrders"><h3>Overzicht bestellingen en nog te maken</h3><div id="sintOrderSummary"></div><h3>Klantbestelling</h3><input type="hidden" id="sintEdit"><div class="grid"><div><label>Datum bestelling</label><input type="date" id="sintOrderDate"></div><div><label>Datum ophalen</label><input type="date" id="sintPickup"></div><div><label>Naam</label><input id="sintName"></div><div><label>Bedrijf</label><input id="sintCompany"></div><div><label>Telefoon</label><input id="sintPhone"></div><div><label>Chocoletter (optie / opmerking)</label><input id="sintChoco" placeholder="Bijv. ja, melk, puur"></div><div class="sint-size-field"><label for="sintLarge">SINT LARGE – AANTAL</label><input type="number" min="0" id="sintLarge" value="0"></div><div class="sint-size-field"><label for="sintSmall">SINT SMALL – AANTAL</label><input type="number" min="0" id="sintSmall" value="0"></div></div><div class="actions"><button class="btn primary" id="sintSaveOrder" type="button">Bestelling opslaan</button><button class="btn light" id="sintResetOrder" type="button">Nieuwe bestelling</button></div><h3>Opgeslagen bestellingen</h3><div class="sint-order-filter"><button type="button" id="sintShowOpen" class="btn secondary">Openstaande bestellingen</button><button type="button" id="sintShowAll" class="btn light">Alle bestellingen / Historie</button></div><div style="margin:12px 0"><label for="sintOrderSearch">Zoek op naam, telefoonnummer of bedrijf</label><input id="sintOrderSearch" type="search" placeholder="Zoek bestelling" autocomplete="off"></div><div id="sintWeeklyPanel" style="margin:18px 0;padding:16px;border:2px solid #e8c94c;border-radius:12px;background:#fffdf1"><h3>Weekuitdraai — nog op te halen</h3><label for="sintWeekSelect">Kies een week</label><input type="week" id="sintWeekSelect" style="max-width:240px"><div class="actions"><button type="button" class="btn primary" id="sintPrintWeek">Print weekoverzicht (A4)</button></div><div id="sintWeekPreview" style="overflow-x:auto;margin-top:12px"></div></div><div id="sintOrderList"></div></div>
 <div id="sintProducts" class="hidden"><h3>Product toevoegen / voorraad ontvangen</h3><div class="grid"><div><label>CounterPoint-code</label><input id="sintProductCode"></div><div><label>Productnaam</label><input id="sintProductName"></div><div><label>Aantal voorraad toevoegen</label><input id="sintProductQty" type="number" min="0" value="0"></div></div><div class="actions"><button class="btn primary" id="sintAddProduct" type="button">Product / voorraad opslaan</button></div><h3>Voorraad producten</h3><div id="sintProductList"></div></div>
 <div id="sintProduction" class="hidden"><h3>Productie / werkelijk verbruik</h3><p class="muted">Vul de aantallen die echt gebruikt zijn zelf in. Er wordt niets uit de pakketsamenstelling berekend.</p><div class="grid"><div><label>Datum</label><input id="sintMoveDate" type="date"></div><div><label>Soort boeking</label><select id="sintMoveType"><option value="make">Pakketten gemaakt</option><option value="shop">Pakketten naar winkel</option><option value="customer">Pakketten meegegeven aan klant</option><option value="use">Producten gebruikt</option></select></div><div id="sintPackageWrap"><label>Large of Small</label><select id="sintPackage"><option value="large">Large</option><option value="small">Small</option></select></div><div id="sintProductWrap" class="hidden"><label>Gebruikt product</label><select id="sintUsedProduct"></select></div><div><label>Aantal</label><input id="sintMoveQty" type="number" min="1" value="1"></div></div><div class="actions"><button class="btn primary" id="sintSaveMove" type="button">Boeking opslaan</button></div><h3>Overzicht pakketten</h3><div id="sintPackageStats"></div><h3>Laatste boekingen</h3><div id="sintMoveList"></div></div>
 <div id="sintReport" class="hidden"><h3>Dagrapport voor CounterPoint</h3><label>Kies datum</label><input id="sintReportDate" type="date"><div class="actions"><button id="sintDownloadCsv" class="btn primary" type="button">Download Excel (CSV)</button><button id="sintShareReport" class="btn light" type="button">Excel-bestand versturen</button></div><div id="sintReportContent"></div></div>
@@ -333,7 +333,43 @@ function sintDisplayDate(value){
  const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
  return m?`${m[3]}-${m[2]}-${m[1]}`:(v||'-');
 }
+function sintWeekBounds(value){
+ const m=/^(\d{4})-W(\d{2})$/.exec(value||'');if(!m)return null;
+ const y=Number(m[1]),w=Number(m[2]);const jan4=new Date(Date.UTC(y,0,4));
+ const monday=new Date(jan4);monday.setUTCDate(jan4.getUTCDate()-((jan4.getUTCDay()+6)%7)+(w-1)*7);
+ const sunday=new Date(monday);sunday.setUTCDate(monday.getUTCDate()+6);
+ const iso=d=>d.toISOString().slice(0,10);return {start:iso(monday),end:iso(sunday)};
+}
+function sintInitWeek(){
+ const d=new Date(),utc=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
+ utc.setUTCDate(utc.getUTCDate()+4-(utc.getUTCDay()||7));const year=utc.getUTCFullYear();
+ const jan1=new Date(Date.UTC(year,0,1));const week=Math.ceil((((utc-jan1)/86400000)+1)/7);
+ $('sintWeekSelect').value=year+'-W'+String(week).padStart(2,'0');
+}
+function sintWeekRows(){
+ const bounds=sintWeekBounds($('sintWeekSelect').value);if(!bounds)return {bounds:null,rows:[]};
+ const rows=sint.orders.filter(o=>{
+  const cancelled=!!o.cancelled||['cancel','cancelled','geannuleerd'].includes(String(o.status||'').toLowerCase());
+  const pickup=String(o.pickup||'');
+  return !o.picked&&!cancelled&&/^\d{4}-\d{2}-\d{2}$/.test(pickup)&&pickup<=bounds.end;
+ }).sort((a,b)=>a.pickup.localeCompare(b.pickup)||(a.name||'').localeCompare(b.name||''));
+ return {bounds,rows};
+}
+function sintWeekTable(){
+ const {bounds,rows}=sintWeekRows();if(!bounds)return '<p>Kies een geldige week.</p>';
+ const totalLarge=rows.reduce((n,o)=>n+sintNum(o.large),0),totalSmall=rows.reduce((n,o)=>n+sintNum(o.small),0);
+ return `<h3>Weekoverzicht ${sintDisplayDate(bounds.start)} t/m ${sintDisplayDate(bounds.end)}</h3><table style="width:100%;border-collapse:collapse;font-size:14px"><thead><tr><th style="text-align:left;border:1px solid #777;padding:8px">Klant</th><th style="border:1px solid #777;padding:8px">Afhaaldatum</th><th style="border:1px solid #777;padding:8px">Large</th><th style="border:1px solid #777;padding:8px">Small</th></tr></thead><tbody>${rows.map(o=>`<tr><td style="border:1px solid #aaa;padding:8px">${safe(o.name||o.company||'-')}</td><td style="border:1px solid #aaa;padding:8px;text-align:center">${sintDisplayDate(o.pickup)}</td><td style="border:1px solid #aaa;padding:8px;text-align:center">${sintNum(o.large)||''}</td><td style="border:1px solid #aaa;padding:8px;text-align:center">${sintNum(o.small)||''}</td></tr>`).join('')||'<tr><td colspan="4" style="padding:12px;text-align:center">Geen openstaande bestellingen</td></tr>'}<tr style="font-weight:bold"><td colspan="2" style="border:1px solid #777;padding:8px">TOTAAL</td><td style="border:1px solid #777;padding:8px;text-align:center">${totalLarge}</td><td style="border:1px solid #777;padding:8px;text-align:center">${totalSmall}</td></tr></tbody></table>`;
+}
+function sintRefreshWeek(){ $('sintWeekPreview').innerHTML=sintWeekTable(); }
+sintInitWeek();
+$('sintWeekSelect').addEventListener('change',sintRefreshWeek);
+$('sintPrintWeek').addEventListener('click',()=>{
+ const html=sintWeekTable();const frame=document.createElement('iframe');frame.style.cssText='position:fixed;width:0;height:0;border:0;';document.body.appendChild(frame);
+ const doc=frame.contentDocument;doc.open();doc.write('<!doctype html><html><head><meta charset="utf-8"><title>Weekuitdraai Sint</title><style>@page{size:A4 portrait;margin:12mm}body{font-family:Arial,sans-serif}h3{font-size:18px}table{width:100%;border-collapse:collapse}tr{break-inside:avoid}</style></head><body>'+html+'</body></html>');doc.close();
+ frame.onload=()=>{frame.contentWindow.focus();frame.contentWindow.print();setTimeout(()=>frame.remove(),60000)};
+});
 function sintRender(){
+ sintRefreshWeek();
  const allOrders=sint.orders.slice().sort((a,b)=>(a.pickup||'9999-12-31').localeCompare(b.pickup||'9999-12-31')||(a.date||'').localeCompare(b.date||''));
  const q=String($('sintOrderSearch').value||'').trim().toLowerCase();
  const digits=q.replace(/\D/g,'');
