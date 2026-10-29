@@ -273,7 +273,7 @@ async function saveQuote(q=quoteData()){
 function buildQuotePdf(q){
   if(!window.jspdf?.jsPDF){msg($('quoteMessage'),'PDF-module kon niet worden geladen.',true);return null}
   const {jsPDF}=window.jspdf,pdf=new jsPDF();
-  try{pdf.addImage(document.querySelector('#appView .logo').src,'JPEG',14,10,182,76)}catch(e){}
+  try{pdf.addImage(document.querySelector('#appView .logo').src,'JPEG',65,16,80,35)}catch(e){}
   pdf.setFont('helvetica','bold');pdf.setFontSize(18);pdf.text(q.type==='invoice'?'INVOICE':'OFFERTE',14,94);
   pdf.setFontSize(10);pdf.setFont('helvetica','normal');pdf.text(`${q.type==='invoice'?'Invoice nummer':'Offertenummer'}: ${q.number}`,14,104);pdf.text(`Datum: ${q.date}`,14,110);
   pdf.text(`Klant: ${q.customer}`,14,128);if(q.email)pdf.text(`E-mail: ${q.email}`,14,134);
