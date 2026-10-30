@@ -141,7 +141,7 @@ label{display:block;font-weight:700;font-size:.9rem;margin-bottom:5px}input,sele
 <script type="module">
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js';
 import {getAuth,GoogleAuthProvider,signInWithPopup,signInWithRedirect,onAuthStateChanged,signOut} from 'https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js';
-import {getFirestore,collection,getDocs,doc,getDoc,setDoc} from 'https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js';
+import {getFirestore,collection,getDocs,doc,getDoc,setDoc,onSnapshot,runTransaction} from 'https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js';
 
 const firebaseConfig={apiKey:"AIzaSyAz84bwA97vvqv7LrjvYXBI7BheRwGM_ms",authDomain:"makro-tht.firebaseapp.com",projectId:"makro-tht",storageBucket:"makro-tht.firebasestorage.app",messagingSenderId:"777366139530",appId:"1:777366139530:web:2cc8ca4c2dfffb9e07f373",measurementId:"G-K9SV5ZLM83"};
 const OWNER='mh.makrostore@gmail.com';
@@ -335,7 +335,19 @@ const sintAvailable=k=>sintMade(k)-sintToShop(k)-sintActiveOrders(k);
 const sintToMake=k=>Math.max(0,-sintAvailable(k));
 
 function sintShow(tab){for(const [t,id] of Object.entries({orders:'sintOrders',products:'sintProducts',production:'sintProduction',report:'sintReport'}))$(id).classList.toggle('hidden',t!==tab);document.querySelectorAll('[data-sint-tab]').forEach(b=>b.className='btn '+(b.dataset.sintTab===tab?'secondary':'light'));if(tab==='report')sintRenderReport()}
-async function sintLoad(){try{const d=await getDoc(sintDoc());const v=d.data()?.sint||{};sint={orders:v.orders||[],products:v.products||[],moves:v.moves||[]};sintRender()}catch(e){msg($('sintMsg'),'Sint gegevens laden mislukt: '+e.message,true)}}
+let sintUnsubscribe=null;
+async function sintLoad(){
+ if(sintUnsubscribe){sintUnsubscribe();sintUnsubscribe=null}
+ try{
+  const d=await getDoc(sintDoc());const v=d.data()?.sint||{};
+  sint={orders:v.orders||[],products:v.products||[],moves:v.moves||[]};sintRender();
+  sintUnsubscribe=onSnapshot(sintDoc(),snap=>{
+   if(snap.metadata.hasPendingWrites)return;
+   const v=snap.data()?.sint||{};
+   sint={orders:v.orders||[],products:v.products||[],moves:v.moves||[]};sintRender();
+  },e=>msg($('sintMsg'),'Synchronisatie mislukt: '+e.message,true));
+ }catch(e){msg($('sintMsg'),'Sint gegevens laden mislukt: '+e.message,true)}
+}
 async function sintCommit(){try{await setDoc(sintDoc(),{sint},{merge:true});msg($('sintMsg'),'Opgeslagen in Firebase.');sintRender();return true}catch(e){msg($('sintMsg'),'Opslaan mislukt: '+e.message,true);await sintLoad();return false}}
 function sintReset(){for(const id of ['sintEdit','sintPickup','sintName','sintCompany','sintPhone','sintChoco'])$(id).value='';$('sintOrderDate').value=todaySint();$('sintLarge').value=0;$('sintSmall').value=0}
 $('sintOrderSearch').addEventListener('input',()=>sintRender());
@@ -429,16 +441,24 @@ function sintRender(){
  $('sintPackageStats').innerHTML=['large','small'].map(k=>`<div class="history-card"><strong>${k.toUpperCase()}</strong> · Besteld (niet geannuleerd): <b>${totals[k]}</b> · Gemaakt: ${sintMade(k)} · Naar winkel: ${sintToShop(k)} · Aan klanten: ${sint.moves.filter(m=>m.type==='customer'&&m.package===k).reduce((a,m)=>a+sintNum(m.qty),0)} · <b>Beschikbaar na bestellingen: <span style="color:${sintAvailable(k)<0?'#b91c1c':'#166534'}">${sintAvailable(k)}</span></b> · <b>Nog te maken: ${sintToMake(k)}</b></div>`).join('');
  const orderSummary=document.getElementById('sintOrderSummary');
  if(orderSummary)orderSummary.innerHTML=['large','small'].map(k=>`<div class="history-card"><strong>${k.toUpperCase()}</strong> · Besteld: ${totals[k]} · Gemaakt: ${sintMade(k)} · Naar winkel: ${sintToShop(k)} · <b style="color:${sintAvailable(k)<0?'#b91c1c':'#166534'}">Voorraad: ${sintAvailable(k)}</b> · <b>Nog te maken: ${sintToMake(k)}</b></div>`).join('');
- $('sintMoveList').innerHTML=sint.moves.slice(-15).reverse().map(m=>`<div class="history-card">${safe(m.date)} · ${safe({make:'Gemaakt',shop:'Naar winkel',customer:'Meegegeven',use:'Product gebruikt',receive:'Ontvangen'}[m.type]||m.type)} · ${safe(m.package||m.code||'')} · ${m.qty}${m.type==='make'?` <button type="button" class="btn light sint-correct-move" data-id="${safe(m.id)}">Wijzigen</button>`:''}</div>`).join('')||'Nog geen boekingen.';
+ $('sintMoveList').innerHTML=sint.moves.slice().reverse().map(m=>`<div class="history-card">${safe(m.date)} · ${safe({make:'Gemaakt',shop:'Naar winkel',customer:'Meegegeven',use:'Product gebruikt',receive:'Ontvangen'}[m.type]||m.type)} · ${safe(m.package||m.code||'')} · ${m.qty} <button type="button" class="btn light sint-correct-move" data-id="${safe(m.id)}">Wijzigen</button></div>`).join('')||'Nog geen boekingen.';
  document.querySelectorAll('.sint-correct-move').forEach(b=>b.onclick=async()=>{
-  const m=sint.moves.find(x=>x.id===b.dataset.id&&x.type==='make');if(!m)return;
-  const answer=prompt('Correct aantal gemaakte '+(m.package==='large'?'LARGE':'SMALL')+' pakketten op '+m.date+':',String(m.qty));
+  const m=sint.moves.find(x=>x.id===b.dataset.id);if(!m)return;
+  const answer=prompt('Correct aantal voor '+({make:'Pakketten gemaakt',shop:'Naar winkel',customer:'Aan klant',use:'Product gebruikt',receive:'Ontvangen'}[m.type]||m.type)+' ('+(m.package||m.code||'')+'):',String(m.qty));
   if(answer===null)return;
-  const raw=answer.trim();const qty=Number(raw);
+  const raw=answer.trim(),qty=Number(raw);
   if(!raw||!Number.isSafeInteger(qty)||qty<0){msg($('sintMsg'),'Vul een geldig heel aantal in (0 of hoger).',true);return}
   if(qty===sintNum(m.qty))return;
-  if(!confirm('Aantal gemaakte pakketten wijzigen van '+m.qty+' naar '+qty+'?'))return;
-  m.qty=qty;await sintCommit();
+  if(!confirm('Aantal wijzigen van '+m.qty+' naar '+qty+'?'))return;
+  try{
+   await runTransaction(db,async tx=>{
+    const ref=sintDoc(),snapshot=await tx.get(ref),data=snapshot.data()?.sint||{};
+    const moves=[...(data.moves||[])],i=moves.findIndex(x=>x.id===m.id);
+    if(i<0)throw new Error('Boeking niet gevonden. Vernieuw de pagina.');
+    moves[i]={...moves[i],qty};tx.set(ref,{sint:{...data,moves}},{merge:true});
+   });
+   msg($('sintMsg'),'Correctie opgeslagen en gesynchroniseerd.');
+  }catch(e){msg($('sintMsg'),'Correctie mislukt: '+e.message,true)}
  });
  sintRenderReport();
 }

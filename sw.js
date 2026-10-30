@@ -1,4 +1,4 @@
-const CACHE='makro-offerte-v1';
+const CACHE='makro-offerte-v3-sync';
 const ASSETS=['./','./index.html','./makro-logo.jpg','./manifest.json'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS))));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k))))));
