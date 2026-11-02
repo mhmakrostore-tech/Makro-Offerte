@@ -286,7 +286,7 @@ function buildQuotePdf(q){
   pdf.text(`${inv?'TOTAL':'Totaal offerte'}: CG ${q.total.toFixed(2)}`,196,fy,{align:'right'});fy+=12;
   if(q.note){pdf.setFont('helvetica','normal');pdf.setFontSize(10);for(const line of pdf.splitTextToSize(`Opmerking: ${q.note}`,175)){if(fy>270){pdf.addPage();fy=20}pdf.text(line,14,fy);fy+=6}fy+=4}
   if(inv){if(fy>245){pdf.addPage();fy=20}pdf.setFont('helvetica','normal');pdf.setFontSize(10);for(const line of ['MCB : 193.529.01','RBTT: 8.000.000.1009.560.88','BDC: 23.88.73.03']){pdf.text(line,14,fy);fy+=7}fy+=4;pdf.text('Kind regards,',14,fy);pdf.setFont('helvetica','bold');pdf.text('Makro Store',14,fy+7)}
-  else {if(fy>255){pdf.addPage();fy=20}pdf.setFont('helvetica','bold');pdf.setFontSize(10);pdf.text('Bovenstaand is een vrijblijvende offerte, geen bestelling!',14,fy);fy+=10;pdf.setFont('helvetica','normal');pdf.text('Met vriendelijke groeten,',14,fy);pdf.setFont('helvetica','bold');pdf.text('Makro',14,fy+6);pdf.text('Promo Team',14,fy+12)}
+  else {if(fy>255){pdf.addPage();fy=20}fy=Math.max(fy,255);pdf.setFont('helvetica','bold');pdf.setFontSize(10);pdf.text('Bovenstaand is een vrijblijvende offerte, geen bestelling!',14,fy);fy+=10;pdf.setFont('helvetica','normal');pdf.text('Met vriendelijke groeten,',14,fy);pdf.setFont('helvetica','bold');pdf.text('Makro',14,fy+6);pdf.text('Promo Team',14,fy+12)}
   return pdf;
 }
 function makeQuotePdf(){const q=quoteData();if(!validateQuote(q))return;const pdf=buildQuotePdf(q);if(pdf)pdf.save(`${q.number}-${q.customer.replace(/[^a-z0-9]+/gi,'-')}.pdf`)}
