@@ -315,7 +315,7 @@ function buildSintInvoicePdf(q,pdf){
   pdf.setFont('helvetica','normal');pdf.setFontSize(10);pdf.text('Totaal CG    CG  '+q.total.toFixed(2),186,fy,{align:'right'});
   fy+=10;
   if(q.note){for(const line of pdf.splitTextToSize('Opmerking: '+q.note,162)){if(fy>270){pdf.addPage();fy=24}pdf.text(line,24,fy);fy+=5}}
-  if(fy>210){pdf.addPage();fy=24}else fy=Math.max(218,fy+12);
+  if(fy>210){pdf.addPage();fy=24}else fy=Math.max(225,fy+12);
   pdf.text('Kind regards,',24,fy);pdf.text('Promo Team',24,fy+6);fy+=18;
   pdf.setFontSize(9);pdf.text(sintSpecialText,24,fy);fy+=9;
   const payment='* all orders after December 1, must be paid before December 1';
@@ -327,7 +327,7 @@ function buildSintInvoicePdf(q,pdf){
 function buildQuotePdf(q){
   if(!window.jspdf?.jsPDF){msg($('quoteMessage'),'PDF-module kon niet worden geladen.',true);return null}
   const {jsPDF}=window.jspdf,pdf=new jsPDF();
-  if(q.sinterklaas && q.type==='invoice')return buildSintInvoicePdf(q,pdf);
+  if(q.type==='invoice')return buildSintInvoicePdf(q,pdf);
   try{pdf.addImage(document.querySelector('#appView .logo').src,'JPEG',65,16,80,35)}catch(e){}
   pdf.setFont('helvetica','bold');pdf.setFontSize(18);pdf.text(q.type==='invoice'?'INVOICE':'OFFERTE',14,94);
   pdf.setFontSize(10);pdf.setFont('helvetica','normal');pdf.text(`${q.type==='invoice'?'Invoice nummer':'Offertenummer'}: ${q.number}`,14,104);pdf.text(`Datum: ${q.date}`,14,110);
