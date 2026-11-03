@@ -195,8 +195,8 @@ const sintSpecialText='* Special price applies to orders of 250 pieces or more p
 function sintPrice(kind,qty){return kind==='small'?(qty>=250?2.10:2.25):(qty>=250?2.80:2.99)}
 function prepareSintRows(){
  $('quoteItems').innerHTML='';
- addQuoteItem({product:'Sint pakket Small',unit:'LOS',qty:1,price:2.25,sintKind:'small'});
- addQuoteItem({product:'Sint pakket Large',unit:'LOS',qty:1,price:2.99,sintKind:'large'});
+ addQuoteItem({product:'Sint pakket Small',code:'30496',unit:'EACH',qty:'',price:2.25,sintKind:'small'});
+ addQuoteItem({product:'Sint pakket Large',code:'30495',unit:'EACH',qty:'',price:2.99,sintKind:'large'});
  updateQuoteTotal();
 }
 
@@ -227,13 +227,13 @@ function addQuoteItem(item={}){
   row.innerHTML=`<div><label>Code</label><input class="quote-code" list="quoteCodeSuggestions" placeholder="Productcode" value="${safe(item.code||'')}"></div>
   <div><label>Naam product</label><input class="quote-product" list="quoteProductSuggestions" placeholder="Naam product" value="${safe(item.product||'')}"></div>
   <div><label>Eenheid</label><select class="quote-unit"><option>LOS</option><option>EACH</option><option>P12</option><option>CRT</option></select></div>
-  <div><label>Aantal</label><input class="quote-qty" type="number" min="1" step="1" value="${Number(item.qty||1)}"></div>
+  <div><label>Aantal</label><input class="quote-qty" type="number" min="1" step="1" value="${item.sintKind && (item.qty==='' || item.qty==null)?'':Number(item.qty||1)}"></div>
   <div><label>Prijs (CG)</label><input class="quote-price" type="number" min="0" step="0.01" value="${item.price!==undefined?Number(item.price).toFixed(2):''}" placeholder="0.00"></div>
   <button type="button" class="btn light quote-remove">×</button>`;
   const codeEl=row.querySelector('.quote-code'),productEl=row.querySelector('.quote-product'),unitEl=row.querySelector('.quote-unit'),priceEl=row.querySelector('.quote-price');
   if(item.sintKind){
     row.dataset.sintKind=item.sintKind;
-    codeEl.value='';codeEl.readOnly=true;productEl.readOnly=true;unitEl.value='LOS';unitEl.disabled=true;priceEl.readOnly=true;
+    codeEl.value=item.sintKind==='small'?'30496':'30495';codeEl.readOnly=true;productEl.readOnly=true;unitEl.value='EACH';unitEl.disabled=true;priceEl.readOnly=true;
     row.querySelector('.quote-remove').style.display='none';
     const qtyEl=row.querySelector('.quote-qty');
     const recalc=()=>{priceEl.value=sintPrice(item.sintKind,Number(qtyEl.value)||0).toFixed(2);updateQuoteTotal()};
@@ -241,7 +241,7 @@ function addQuoteItem(item={}){
     priceEl.value=sintPrice(item.sintKind,Number(qtyEl.value)||0).toFixed(2);
   }
 
-  unitEl.value=item.unit||'LOS';
+  unitEl.value=item.sintKind?'EACH':(item.unit||'LOS');
   const fill=p=>{
     if(!p)return;
     productEl.value=p.name||'';
@@ -267,6 +267,7 @@ function quoteItemsData(){
   return [...document.querySelectorAll('.quote-item')].map(r=>{
     const product=r.querySelector('.quote-product')?.value.trim()||'',unit=r.querySelector('.quote-unit')?.value||'LOS';
     if(!product)return null;
+    if(r.dataset.sintKind && !(Number(r.querySelector('.quote-qty')?.value)>0))return null;
     const p=products.find(x=>String(x.name||'').trim().toLowerCase()===product.toLowerCase());
     const qty=Math.max(1,Number(r.querySelector('.quote-qty')?.value||1));
     const sintKind=r.dataset.sintKind||'';
