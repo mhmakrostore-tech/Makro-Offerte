@@ -380,7 +380,7 @@ async function loadQuoteHistory(){
 $('loginBtn').onclick=async()=>{try{await signInWithPopup(auth,provider)}catch(e){if(e.code==='auth/popup-blocked')await signInWithRedirect(auth,provider);else msg($('loginMsg'),e.message,true)}};
 $('logoutBtn').onclick=()=>signOut(auth);
 $('addQuoteItemBtn').onclick=()=>addQuoteItem();
-$('saveQuoteBtn').onclick=()=>saveQuote();$('quotePdfBtn').onclick=makeQuotePdf;$('quoteWhatsappBtn').onclick=()=>shareQuotePdf('whatsapp');$('quoteEmailBtn').onclick=()=>shareQuotePdf('email');$('quotePrintBtn').onclick=printQuote;$('newQuoteBtn').onclick=resetQuote;
+$('saveQuoteBtn').onclick=async()=>{const saved=await saveQuote();if(saved){resetQuote();msg($('quoteMessage'),saved.type==='invoice'?'Invoice opgeslagen. Formulier is leeg voor een nieuwe invoice.':'Offerte opgeslagen. Formulier is leeg voor een nieuwe offerte.');}};$('quotePdfBtn').onclick=makeQuotePdf;$('quoteWhatsappBtn').onclick=()=>shareQuotePdf('whatsapp');$('quoteEmailBtn').onclick=()=>shareQuotePdf('email');$('quotePrintBtn').onclick=printQuote;$('newQuoteBtn').onclick=resetQuote;
 
 
 // SINT administratie: alles in hetzelfde toegankelijke Firestore-document als de offertes.
