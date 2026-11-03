@@ -188,6 +188,7 @@ function refreshCustomerSuggestions(){
   const names=[...new Set((quoteHistoryState.entries||[]).map(q=>String(q.customer||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
   $('customerSuggestions').innerHTML=names.map(n=>`<option value="${safe(n)}"></option>`).join('');
 }
+let savedQuoteId=null;
 function invoiceNumber(entries){const nums=(entries||[]).map(x=>/^INV-(\d+)$/.exec(x.number||'')).filter(Boolean).map(m=>Number(m[1]));return 'INV-'+String(Math.max(0,...nums)+1).padStart(3,'0')}
 function documentType(){return $('documentType').value==='sint_invoice'?'invoice':$('documentType').value==='sint_offerte'?'offerte':$('documentType').value}
 function isSintQuote(){return $('documentType').value.startsWith('sint_')}
@@ -200,7 +201,7 @@ function prepareSintRows(){
  updateQuoteTotal();
 }
 
-function syncDocumentType(keepNumber=false){const inv=documentType()==='invoice';$('quoteHeading').textContent=inv?'INVOICE':'OFFERTE';$('quoteNumberLabel').textContent=inv?'Invoice nummer':'Offertenummer';$('quoteTotalLabel').textContent=inv?'Total invoice':'Totaal offerte';$('saveQuoteBtn').textContent=inv?'INVOICE OPSLAAN':'OFFERTE OPSLAAN';$('newQuoteBtn').textContent=inv?'NIEUWE INVOICE':'NIEUWE OFFERTE';if(!keepNumber)$('quoteNumber').value=inv?invoiceNumber(quoteHistoryState.entries):newQuoteNumber()}
+function syncDocumentType(keepNumber=false){const inv=documentType()==='invoice';$('quoteHeading').textContent=inv?'INVOICE':'OFFERTE';$('quoteNumberLabel').textContent=inv?'Invoice nummer':'Offertenummer';$('quoteTotalLabel').textContent=inv?'Total invoice':'Totaal offerte';$('saveQuoteBtn').textContent=inv?'INVOICE OPSLAAN':'OFFERTE OPSLAAN';$('newQuoteBtn').textContent=inv?'NIEUWE INVOICE':'NIEUWE OFFERTE';if(!keepNumber)savedQuoteId=null;if(!keepNumber)$('quoteNumber').value=inv?invoiceNumber(quoteHistoryState.entries):newQuoteNumber()}
 $('documentType').addEventListener('change',()=>{syncDocumentType();if(isSintQuote())prepareSintRows();else{$('quoteItems').innerHTML='';addQuoteItem()}});
 function resetQuote(){
   $('quoteCustomer').value='';$('quoteEmail').value='';$('quoteNote').value='';
@@ -284,12 +285,18 @@ async function saveQuote(q=quoteData()){
   if(!validateQuote(q))return null;
   try{
     const ref=doc(db,'publicSettings','offerteTracker');
-    const snap=await getDoc(ref),state=snap.exists()?snap.data():{entries:[]};
-    const entries=Array.isArray(state.entries)?state.entries:[],idx=entries.findIndex(x=>x.id===q.id);
-    if(q.type==='invoice' && idx<0){q.number=invoiceNumber(entries);q.id=q.number;$('quoteNumber').value=q.number}
-    const existing=entries.findIndex(x=>x.id===q.id);
-    if(existing>=0)entries[existing]=q;else entries.push(q);
-    await setDoc(ref,{entries},{merge:true});
+    const result=await runTransaction(db,async tx=>{
+      const snap=await tx.get(ref),state=snap.exists()?snap.data():{entries:[]};
+      const entries=Array.isArray(state.entries)?[...state.entries]:[];
+      const saved={...q};
+      const editing=savedQuoteId && savedQuoteId===q.id && entries.some(x=>x.id===savedQuoteId);
+      if(saved.type==='invoice' && !editing){saved.number=invoiceNumber(entries);saved.id=saved.number}
+      const existing=entries.findIndex(x=>x.id===saved.id);
+      if(existing>=0)entries[existing]=saved;else entries.push(saved);
+      tx.set(ref,{entries},{merge:true});
+      return {entries,saved};
+    });
+    const entries=result.entries;q=result.saved;savedQuoteId=q.id;$('quoteNumber').value=q.number;
     quoteHistoryState={entries};renderQuoteHistory();refreshCustomerSuggestions();refreshProductSuggestions();msg($('quoteMessage'),q.type==='invoice'?'Invoice opgeslagen.':'Offerte opgeslagen. Dit is geen bestelling en gaat niet naar ORDER PICK.');return q;
   }catch(e){msg($('quoteMessage'),'Opslaan mislukt: '+e.message,true);return null}
 }
@@ -362,6 +369,7 @@ function renderQuoteHistory(){
 }
 function loadQuote(id){
   const q=(quoteHistoryState.entries||[]).find(x=>x.id===id);if(!q)return;
+  savedQuoteId=q.id;
   $('documentType').value=q.sinterklaas?(q.type==='invoice'?'sint_invoice':'sint_offerte'):(q.type==='invoice'?'invoice':'offerte');syncDocumentType(true);$('quoteCustomer').value=q.customer||'';$('quoteEmail').value=q.email||'';$('quoteNumber').value=q.number||q.id;$('quoteDate').value=q.date||new Date().toISOString().slice(0,10);$('quoteNote').value=q.note||'';
   $('quoteItems').innerHTML='';(q.items||[]).forEach(addQuoteItem);if(!(q.items||[]).length)addQuoteItem();updateQuoteTotal();window.scrollTo({top:0,behavior:'smooth'});
 }
@@ -372,7 +380,7 @@ async function loadQuoteHistory(){
 $('loginBtn').onclick=async()=>{try{await signInWithPopup(auth,provider)}catch(e){if(e.code==='auth/popup-blocked')await signInWithRedirect(auth,provider);else msg($('loginMsg'),e.message,true)}};
 $('logoutBtn').onclick=()=>signOut(auth);
 $('addQuoteItemBtn').onclick=()=>addQuoteItem();
-$('saveQuoteBtn').onclick=saveQuote;$('quotePdfBtn').onclick=makeQuotePdf;$('quoteWhatsappBtn').onclick=()=>shareQuotePdf('whatsapp');$('quoteEmailBtn').onclick=()=>shareQuotePdf('email');$('quotePrintBtn').onclick=printQuote;$('newQuoteBtn').onclick=resetQuote;
+$('saveQuoteBtn').onclick=()=>saveQuote();$('quotePdfBtn').onclick=makeQuotePdf;$('quoteWhatsappBtn').onclick=()=>shareQuotePdf('whatsapp');$('quoteEmailBtn').onclick=()=>shareQuotePdf('email');$('quotePrintBtn').onclick=printQuote;$('newQuoteBtn').onclick=resetQuote;
 
 
 // SINT administratie: alles in hetzelfde toegankelijke Firestore-document als de offertes.
