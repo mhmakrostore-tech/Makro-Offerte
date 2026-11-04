@@ -141,11 +141,11 @@ label{display:block;font-weight:700;font-size:.9rem;margin-bottom:5px}input,sele
 <script type="module">
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js';
 import {getAuth,GoogleAuthProvider,signInWithPopup,signInWithRedirect,onAuthStateChanged,signOut} from 'https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js';
-import {getFirestore,collection,getDocs,doc,getDoc,setDoc,onSnapshot,runTransaction} from 'https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js';
+import {initializeFirestore,collection,getDocs,doc,getDoc,setDoc,onSnapshot,runTransaction} from 'https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js';
 
 const firebaseConfig={apiKey:"AIzaSyAz84bwA97vvqv7LrjvYXBI7BheRwGM_ms",authDomain:"makro-tht.firebaseapp.com",projectId:"makro-tht",storageBucket:"makro-tht.firebasestorage.app",messagingSenderId:"777366139530",appId:"1:777366139530:web:2cc8ca4c2dfffb9e07f373",measurementId:"G-K9SV5ZLM83"};
 const OWNER='mh.makrostore@gmail.com';
-const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app),provider=new GoogleAuthProvider(),$=id=>document.getElementById(id);
+const app=initializeApp(firebaseConfig),auth=getAuth(app),db=initializeFirestore(app,{experimentalAutoDetectLongPolling:true}),provider=new GoogleAuthProvider(),$=id=>document.getElementById(id);
 let products=[],quoteHistoryState={entries:[]};
 let rememberedQuoteProducts=[];
 
@@ -377,7 +377,7 @@ async function loadQuoteHistory(){
   try{const snap=await getDoc(doc(db,'publicSettings','offerteTracker'));quoteHistoryState=snap.exists()?snap.data():{entries:[]};if(documentType()==='invoice')syncDocumentType();renderQuoteHistory();refreshCustomerSuggestions()}catch(e){msg($('quoteMessage'),'Offertes laden mislukt: '+e.message,true)}
 }
 
-$('loginBtn').onclick=async()=>{try{await signInWithPopup(auth,provider)}catch(e){if(e.code==='auth/popup-blocked')await signInWithRedirect(auth,provider);else msg($('loginMsg'),e.message,true)}};
+$('loginBtn').onclick=async()=>{try{await signInWithPopup(auth,provider)}catch(e){if(e.code==='auth/popup-blocked')await signInWithRedirect(auth,provider);else msg($('loginMsg'),'Inloggen mislukt ('+(e.code||'onbekend')+'): '+e.message,true)}};
 $('logoutBtn').onclick=()=>signOut(auth);
 $('addQuoteItemBtn').onclick=()=>addQuoteItem();
 $('saveQuoteBtn').onclick=async()=>{const saved=await saveQuote();if(saved){resetQuote();msg($('quoteMessage'),saved.type==='invoice'?'Invoice opgeslagen. Formulier is leeg voor een nieuwe invoice.':'Offerte opgeslagen. Formulier is leeg voor een nieuwe offerte.');}};$('quotePdfBtn').onclick=makeQuotePdf;$('quoteWhatsappBtn').onclick=()=>shareQuotePdf('whatsapp');$('quoteEmailBtn').onclick=()=>shareQuotePdf('email');$('quotePrintBtn').onclick=printQuote;$('newQuoteBtn').onclick=resetQuote;
@@ -403,13 +403,12 @@ let sintUnsubscribe=null;
 async function sintLoad(){
  if(sintUnsubscribe){sintUnsubscribe();sintUnsubscribe=null}
  try{
-  const d=await getDoc(sintDoc());const v=d.data()?.sint||{};
-  sint={orders:v.orders||[],products:v.products||[],moves:v.moves||[]};sintRender();
+  msg($('sintMsg'),'SINT-gegevens synchroniseren…');
   sintUnsubscribe=onSnapshot(sintDoc(),snap=>{
    if(snap.metadata.hasPendingWrites)return;
    const v=snap.data()?.sint||{};
-   sint={orders:v.orders||[],products:v.products||[],moves:v.moves||[]};sintRender();
-  },e=>msg($('sintMsg'),'Synchronisatie mislukt: '+e.message,true));
+   sint={orders:v.orders||[],products:v.products||[],moves:v.moves||[]};sintRender();msg($('sintMsg'),snap.metadata.fromCache?'Offline: lokale gegevens zichtbaar, synchronisatie volgt.':'');
+  },e=>msg($('sintMsg'),'Synchronisatie mislukt ('+(e.code||'verbinding')+'): '+e.message,true));
  }catch(e){msg($('sintMsg'),'Sint gegevens laden mislukt: '+e.message,true)}
 }
 async function sintCommit(){try{await setDoc(sintDoc(),{sint},{merge:true});msg($('sintMsg'),'Opgeslagen in Firebase.');sintRender();return true}catch(e){msg($('sintMsg'),'Opslaan mislukt: '+e.message,true);await sintLoad();return false}}
@@ -458,6 +457,17 @@ $('sintPrintWeek').addEventListener('click',()=>{
 function sintRender(){
  sintRefreshWeek();
  const allOrders=sint.orders.slice().sort((a,b)=>(a.pickup||'9999-12-31').localeCompare(b.pickup||'9999-12-31')||(a.date||'').localeCompare(b.date||''));
+ // Kleur per klant op basis van gemaakte zakken, toegewezen op afhaaldatum.
+ const sintRemaining={large:Math.max(0,sintMade('large')-sintToShop('large')),small:Math.max(0,sintMade('small')-sintToShop('small'))};
+ const sintReadyColors=new Map();
+ allOrders.forEach(o=>{
+   const cancelled=!!o.cancelled||['cancel','cancelled','geannuleerd'].includes(String(o.status||'').toLowerCase());
+   if(cancelled){sintReadyColors.set(o,'#b91c1c');return;}
+   const large=sintNum(o.large),small=sintNum(o.small);
+   const enough=sintRemaining.large>=large&&sintRemaining.small>=small;
+   sintReadyColors.set(o,enough?'#15803d':'#b91c1c');
+   if(enough){sintRemaining.large-=large;sintRemaining.small-=small;}
+ });
  const q=String($('sintOrderSearch').value||'').trim().toLowerCase();
  const digits=q.replace(/\D/g,'');
  const base=q?allOrders:(window.sintShowAllOrders?allOrders:allOrders.filter(o=>!o.picked&&!o.cancelled&&!['cancel','cancelled','geannuleerd'].includes(String(o.status||'').toLowerCase())));
@@ -467,7 +477,7 @@ function sintRender(){
  const picked=!!o.picked;
  const state=cancelled?'GEANNULEERD':picked?'OPGEHAALD':'OPENSTAAND';
  return `<div class="sint-order-card ${cancelled?'sint-cancelled':picked?'sint-picked':''}">
- <div class="sint-order-name">${safe(o.name||'Naam nog invullen')}</div>
+ <div class="sint-order-name" style="color:${sintReadyColors.get(o)} !important">${safe(o.name||'Naam nog invullen')}</div>
  <div class="sint-order-details">
  <div><span class="sint-field-label">Bedrijf</span><strong>${safe(o.company||'Nog invullen')}</strong></div>
  <div><span class="sint-field-label">Telefoon</span><strong>${safe(o.phone||'Nog invullen')}</strong></div>
@@ -558,7 +568,7 @@ onAuthStateChanged(auth,async user=>{
   if(String(user.email||'').toLowerCase()!==OWNER){msg($('loginMsg'),'Dit account heeft geen toegang.',true);await signOut(auth);return}
   $('loginView').classList.add('hidden');$('appView').classList.remove('hidden');$('email').textContent=user.email||'';
   resetQuote();
-  await Promise.all([loadProducts(),loadQuoteHistory()]);await sintLoad();
+  await Promise.allSettled([loadProducts(),loadQuoteHistory(),sintLoad()]);
 });
 
 if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
