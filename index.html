@@ -189,7 +189,7 @@ function refreshCustomerSuggestions(){
   $('customerSuggestions').innerHTML=names.map(n=>`<option value="${safe(n)}"></option>`).join('');
 }
 let savedQuoteId=null;
-function invoiceNumber(entries){const nums=(entries||[]).map(x=>/^INV-(\d+)$/.exec(x.number||'')).filter(Boolean).map(m=>Number(m[1]));return 'INV-'+String(Math.max(0,...nums)+1).padStart(3,'0')}
+function invoiceNumber(entries, lastNumber=0){const nums=(entries||[]).map(x=>/^INV-(\d+)$/.exec(x.number||'')).filter(Boolean).map(m=>Number(m[1]));return 'INV-'+String(Math.max(Number(lastNumber)||0,0,...nums)+1).padStart(3,'0')}
 function documentType(){return $('documentType').value==='sint_invoice'?'invoice':$('documentType').value==='sint_offerte'?'offerte':$('documentType').value}
 function isSintQuote(){return $('documentType').value.startsWith('sint_')}
 const sintSpecialText='* Special price applies to orders of 250 pieces or more per product.';
@@ -201,7 +201,7 @@ function prepareSintRows(){
  updateQuoteTotal();
 }
 
-function syncDocumentType(keepNumber=false){const inv=documentType()==='invoice';$('quoteHeading').textContent=inv?'INVOICE':'OFFERTE';$('quoteNumberLabel').textContent=inv?'Invoice nummer':'Offertenummer';$('quoteTotalLabel').textContent=inv?'Total invoice':'Totaal offerte';$('saveQuoteBtn').textContent=inv?'INVOICE OPSLAAN':'OFFERTE OPSLAAN';$('newQuoteBtn').textContent=inv?'NIEUWE INVOICE':'NIEUWE OFFERTE';if(!keepNumber)savedQuoteId=null;if(!keepNumber)$('quoteNumber').value=inv?invoiceNumber(quoteHistoryState.entries):newQuoteNumber()}
+function syncDocumentType(keepNumber=false){const inv=documentType()==='invoice';$('quoteHeading').textContent=inv?'INVOICE':'OFFERTE';$('quoteNumberLabel').textContent=inv?'Invoice nummer':'Offertenummer';$('quoteTotalLabel').textContent=inv?'Total invoice':'Totaal offerte';$('saveQuoteBtn').textContent=inv?'INVOICE OPSLAAN':'OFFERTE OPSLAAN';$('newQuoteBtn').textContent=inv?'NIEUWE INVOICE':'NIEUWE OFFERTE';if(!keepNumber)savedQuoteId=null;if(!keepNumber)$('quoteNumber').value=inv?invoiceNumber(quoteHistoryState.entries,quoteHistoryState.lastInvoiceNumber):newQuoteNumber()}
 $('documentType').addEventListener('change',()=>{syncDocumentType();if(isSintQuote())prepareSintRows();else{$('quoteItems').innerHTML='';addQuoteItem()}});
 function resetQuote(){
   $('quoteCustomer').value='';$('quoteEmail').value='';$('quoteNote').value='';
@@ -290,14 +290,15 @@ async function saveQuote(q=quoteData()){
       const entries=Array.isArray(state.entries)?[...state.entries]:[];
       const saved={...q};
       const editing=savedQuoteId && savedQuoteId===q.id && entries.some(x=>x.id===savedQuoteId);
-      if(saved.type==='invoice' && !editing){saved.number=invoiceNumber(entries);saved.id=saved.number}
+      if(saved.type==='invoice' && !editing){saved.number=invoiceNumber(entries,state.lastInvoiceNumber);saved.id=saved.number}
+      const lastInvoiceNumber=saved.type==='invoice'?Math.max(Number(state.lastInvoiceNumber)||0,Number((/^INV-(\d+)$/.exec(saved.number)||[])[1])||0):Number(state.lastInvoiceNumber)||0;
       const existing=entries.findIndex(x=>x.id===saved.id);
       if(existing>=0)entries[existing]=saved;else entries.push(saved);
-      tx.set(ref,{entries},{merge:true});
+      tx.set(ref,{entries,lastInvoiceNumber},{merge:true});
       return {entries,saved};
     });
     const entries=result.entries;q=result.saved;savedQuoteId=q.id;$('quoteNumber').value=q.number;
-    quoteHistoryState={entries};renderQuoteHistory();refreshCustomerSuggestions();refreshProductSuggestions();msg($('quoteMessage'),q.type==='invoice'?'Invoice opgeslagen.':'Offerte opgeslagen. Dit is geen bestelling en gaat niet naar ORDER PICK.');return q;
+    quoteHistoryState={entries,lastInvoiceNumber:Math.max(Number(quoteHistoryState.lastInvoiceNumber)||0,Number((/^INV-(\d+)$/.exec(q.number)||[])[1])||0)};renderQuoteHistory();refreshCustomerSuggestions();refreshProductSuggestions();msg($('quoteMessage'),q.type==='invoice'?'Invoice opgeslagen.':'Offerte opgeslagen. Dit is geen bestelling en gaat niet naar ORDER PICK.');return q;
   }catch(e){msg($('quoteMessage'),'Opslaan mislukt: '+e.message,true);return null}
 }
 function buildSintInvoicePdf(q,pdf){
@@ -355,10 +356,11 @@ function makeQuotePdf(){const q=quoteData();if(!validateQuote(q))return;const pd
 async function shareQuotePdf(mode){
   const q=await saveQuote();if(!q)return;const pdf=buildQuotePdf(q);if(!pdf)return;
   const blob=pdf.output('blob'),file=new File([blob],`${q.number}.pdf`,{type:'application/pdf'}),text=`${q.type==='invoice'?'Invoice':'Offerte'} ${q.number} voor ${q.customer}.${q.type==='invoice'?'':' Bovenstaand is een vrijblijvende offerte, geen bestelling!'}`;
-  try{if(navigator.canShare&&navigator.canShare({files:[file]})&&navigator.share){await navigator.share({title:`Makro ${q.type==='invoice'?'invoice':'offerte'} ${q.number}`,text,files:[file]});return}}catch(e){if(e.name==='AbortError')return}
+  try{if(navigator.canShare&&navigator.canShare({files:[file]})&&navigator.share){await navigator.share({title:`Makro ${q.type==='invoice'?'invoice':'offerte'} ${q.number}`,text,files:[file]});resetQuote();return}}catch(e){if(e.name==='AbortError')return}
   pdf.save(`${q.number}.pdf`);
   if(mode==='email'){location.href=`mailto:${encodeURIComponent(q.email||'')}?subject=${encodeURIComponent('Makro '+(q.type==='invoice'?'invoice ':'offerte ')+q.number)}&body=${encodeURIComponent(text+'\n\nDe PDF is gedownload. Voeg deze PDF als bijlage toe aan deze e-mail.')}`}
   else window.open(`https://wa.me/?text=${encodeURIComponent(text+'\n\nDe PDF is gedownload. Voeg het PDF-bestand toe in WhatsApp.')}`,'_blank');
+  resetQuote();
 }
 function printQuote(){const q=quoteData();if(!validateQuote(q))return;const pdf=buildQuotePdf(q);if(pdf)window.open(pdf.output('bloburl'),'_blank')}
 function renderQuoteHistory(){
