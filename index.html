@@ -122,6 +122,8 @@ label{display:block;font-weight:700;font-size:.9rem;margin-bottom:5px}input,sele
 
     <section class="card no-print">
       <h2>Opgeslagen offertes en invoices</h2>
+      <label for="quoteHistorySearch">Zoeken in offertes en invoices</label>
+      <input id="quoteHistorySearch" type="search" placeholder="Offertenummer, invoicenummer of klantnaam" autocomplete="off">
       <div id="quoteHistory"></div>
     </section>
 
@@ -364,10 +366,15 @@ async function shareQuotePdf(mode){
 }
 function printQuote(){const q=quoteData();if(!validateQuote(q))return;const pdf=buildQuotePdf(q);if(pdf)window.open(pdf.output('bloburl'),'_blank')}
 function renderQuoteHistory(){
-  const entries=[...(quoteHistoryState.entries||[])].sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
-  $('quoteHistory').innerHTML=entries.length?entries.map(q=>`<div class="history-card"><div class="history-head"><div><strong>${safe(q.number||'Offerte')}</strong> — ${safe(q.customer||'-')}<div class="muted">${safe(q.date||'')} · CG ${Number(q.total||0).toFixed(2)}</div></div><button class="btn light load-quote" data-id="${safe(q.id)}">OPENEN</button></div></div>`).join(''):'<div class="muted">Nog geen offertes opgeslagen.</div>';
+  const normalize = value => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  const search = normalize($('quoteHistorySearch').value);
+  const entries = (quoteHistoryState.entries || [])
+    .filter(q => !search || [q.number || q.id, q.customer].some(value => normalize(value).includes(search)))
+    .sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
+  $('quoteHistory').innerHTML=entries.length?entries.map(q=>`<div class="history-card"><div class="history-head"><div><strong>${safe(q.number||'Offerte')}</strong> — ${safe(q.customer||'-')}<div class="muted">${safe(q.date||'')} · CG ${Number(q.total||0).toFixed(2)}</div></div><button class="btn light load-quote" data-id="${safe(q.id)}">OPENEN</button></div></div>`).join(''): '<div class="muted">' + (search ? 'Geen offertes of invoices gevonden.' : 'Nog geen offertes of invoices opgeslagen.') + '</div>';
   document.querySelectorAll('.load-quote').forEach(b=>b.onclick=()=>loadQuote(b.dataset.id));
 }
+$('quoteHistorySearch').addEventListener('input', renderQuoteHistory);
 function loadQuote(id){
   const q=(quoteHistoryState.entries||[]).find(x=>x.id===id);if(!q)return;
   savedQuoteId=q.id;
